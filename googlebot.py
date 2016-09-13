@@ -316,8 +316,34 @@ class JackHandyBot(SingleServerIRCBot):
     def privmsg_multiline(self,c,nick,msg):
         self.delay()
         for x in string.split(msg,"\n"):
-            c.privmsg(nick, x)
-            time.sleep(1)
+            # IRC has a hard Message-Limit of 512,
+            # so leave a generous Amount of Space for "PRIVMSG #Channel :"
+            max_line_len = 423
+            pos = 0
+
+            while pos < len(x):
+                if len(x)+pos < max_line_len:
+                    c.privmsg(nick, x[pos:])
+                    time.sleep(1)
+                    break
+
+                split = pos + max_line_len;
+                while split < len(x) and split > pos:
+                    if x[split] in " ,.;\t-":
+                        break
+                    split -= 1
+
+                s = ""
+                if split == pos:
+                    # If we found no Split-Points, we must fall back to the whole Chunk
+                    s = x[pos:split+max_line_len:]
+                    pos += max_line_len
+                else:
+                    s = x[pos:split]
+                    pos = split+1
+
+                c.privmsg(nick, s)
+                time.sleep(1)
 
     def do_command(self, nick, channel, cmd):
         masters = ["Lucifer", "LuciferAFK", "Hermit"]
